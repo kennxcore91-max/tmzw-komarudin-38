@@ -14,6 +14,7 @@ color:white;
 }
 
 .container{padding:20px;}
+
 input,button{
 width:100%;
 padding:12px;
@@ -25,6 +26,7 @@ border:none;
 button{
 background:#00c6ff;
 font-weight:bold;
+cursor:pointer;
 }
 
 .card{
@@ -35,6 +37,11 @@ margin-top:15px;
 }
 
 .hidden{display:none;}
+
+.stat{
+margin-bottom:10px;
+font-size:14px;
+}
 </style>
 </head>
 <body>
@@ -47,6 +54,7 @@ margin-top:15px;
 </div>
 
 <div class="container hidden" id="dashboard">
+
 <h2>Dashboard</h2>
 <button id="logoutBtn">Logout</button>
 
@@ -59,8 +67,18 @@ margin-top:15px;
 </div>
 
 <div class="card">
-<h3>Data Tersimpan</h3>
-<div id="dataList">Belum ada data</div>
+<h3>Target (Admin Only)</h3>
+<div id="adminSection" class="hidden">
+<input type="number" id="targetSPD" placeholder="Target SPD Harian">
+<input type="number" id="targetBulanan" placeholder="Target Akumulasi Bulanan">
+<button id="saveTargetBtn">Simpan Target</button>
+</div>
+<div id="targetInfo"></div>
+</div>
+
+<div class="card">
+<h3>Rekap Bulan Berjalan</h3>
+<div id="rekap"></div>
 </div>
 
 </div>
@@ -68,7 +86,7 @@ margin-top:15px;
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
-import { getFirestore, collection, doc, setDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+import { getFirestore, collection, doc, setDoc, getDocs, getDoc } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
 const firebaseConfig = {
 apiKey: "AIzaSyCyPdzQAsDENvsIS-lzfoRMI97r1GBYsvM",
@@ -79,19 +97,21 @@ messagingSenderId: "247873202745",
 appId: "1:247873202745:web:b8edbf0a1117530c8f3be8"
 };
 
+const ADMIN_EMAIL = "ikinasikin.co@gmail.com";
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
 const loginPage = document.getElementById("loginPage");
 const dashboard = document.getElementById("dashboard");
+const adminSection = document.getElementById("adminSection");
 
 document.getElementById("loginBtn").onclick = async ()=>{
-const email = document.getElementById("email").value;
-const pass = document.getElementById("password").value;
+const email = email.value;
+const pass = password.value;
 try{
 await signInWithEmailAndPassword(auth,email,pass);
-alert("Login berhasil");
 }catch(e){
 alert("Login gagal: "+e.message);
 }
@@ -105,7 +125,16 @@ onAuthStateChanged(auth,user=>{
 if(user){
 loginPage.classList.add("hidden");
 dashboard.classList.remove("hidden");
-loadData();
+
+if(user.email === ADMIN_EMAIL){
+adminSection.classList.remove("hidden");
+}else{
+adminSection.classList.add("hidden");
+}
+
+loadRekap();
+loadTarget();
+
 }else{
 loginPage.classList.remove("hidden");
 dashboard.classList.add("hidden");
@@ -122,39 +151,81 @@ alert("Lengkapi data dulu");
 return;
 }
 
-const apc = sales/struk;
-
 await setDoc(doc(db,"sales",tanggal),{
 tanggal,
 sales,
-struk,
-std:struk,
-spd:sales,
-apc:apc
+struk
 });
 
 alert("Data tersimpan");
-loadData();
+loadRekap();
 };
 
-async function loadData(){
+document.getElementById("saveTargetBtn").onclick = async ()=>{
+const targetSPD = Number(document.getElementById("targetSPD").value);
+const targetBulanan = Number(document.getElementById("targetBulanan").value);
+
+await setDoc(doc(db,"config","target"),{
+targetSPD,
+targetBulanan
+});
+
+alert("Target disimpan");
+loadTarget();
+};
+
+async function loadTarget(){
+const docSnap = await getDoc(doc(db,"config","target"));
+if(docSnap.exists()){
+const d = docSnap.data();
+document.getElementById("targetInfo").innerHTML =
+`Target SPD: ${d.targetSPD || 0}<br>
+Target Bulanan: ${d.targetBulanan || 0}`;
+}
+}
+
+async function loadRekap(){
 const querySnapshot = await getDocs(collection(db,"sales"));
-let html="";
+let totalSales = 0;
+let totalStruk = 0;
+
+const today = new Date();
+const currentMonth = today.getMonth();
+const currentYear = today.getFullYear();
+const todayDate = today.getDate();
+
 querySnapshot.forEach(doc=>{
 const d = doc.data();
-html+=`
-<div style="margin-bottom:10px;">
-<b>${d.tanggal}</b><br>
-Sales: ${d.sales}<br>
-Struk: ${d.struk}<br>
-STD: ${d.std}<br>
-SPD: ${d.spd}<br>
-APC: ${d.apc.toFixed(0)}
-</div>
-<hr>
-`;
+const dateObj = new Date(d.tanggal);
+
+if(dateObj.getMonth() === currentMonth && dateObj.getFullYear() === currentYear){
+totalSales += d.sales;
+totalStruk += d.struk;
+}
 });
-document.getElementById("dataList").innerHTML = html || "Belum ada data";
+
+const spd = totalSales / todayDate;
+const apc = totalStruk > 0 ? totalSales / totalStruk : 0;
+
+const targetDoc = await getDoc(doc(db,"config","target"));
+let targetSPD = 0;
+let targetBulanan = 0;
+
+if(targetDoc.exists()){
+targetSPD = targetDoc.data().targetSPD || 0;
+targetBulanan = targetDoc.data().targetBulanan || 0;
+}
+
+const acvSPD = targetSPD > 0 ? (spd / targetSPD) * 100 : 0;
+const acvBulanan = targetBulanan > 0 ? (totalSales / targetBulanan) * 100 : 0;
+
+document.getElementById("rekap").innerHTML = `
+<div class="stat">Total Akumulasi: ${totalSales.toLocaleString()}</div>
+<div class="stat">SPD Berjalan: ${spd.toFixed(0)}</div>
+<div class="stat">APC Berjalan: ${apc.toFixed(0)}</div>
+<div class="stat">Achievement SPD: ${acvSPD.toFixed(1)}%</div>
+<div class="stat">Achievement Bulanan: ${acvBulanan.toFixed(1)}%</div>
+`;
 }
 </script>
 
