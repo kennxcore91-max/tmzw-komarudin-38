@@ -70,73 +70,36 @@ button {
 </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } 
-from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
-import { getFirestore, doc, setDoc } 
-from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
+  import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCyPdzQAsDENvsIS-lzfoRMI97r1GBYsvM",
-  authDomain: "tmzw-komarudin-38.firebaseapp.com",
-  projectId: "tmzw-komarudin-38",
-  storageBucket: "tmzw-komarudin-38.firebasestorage.app",
-  messagingSenderId: "247873202745",
-  appId: "1:247873202745:web:b8edbf0a1117530c8f3be8"
-};
+  const firebaseConfig = {
+    apiKey: "AIzaSyCyPdzQAsDENvsIS-lzfoRMI97r1GBYsvM",,
+    authDomain: "tmzw-komarudin-38.firebaseapp.com",
+    projectId: "tmzw-komarudin-38",
+    storageBucket: "tmzw-komarudin-38.firebasestorage.app",
+    messagingSenderId: "247873202745",
+    appId: "1:247873202745:web:b8edbf0a1117530c8f3be8"
+  };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth();
-const db = getFirestore();
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
 
-let loginAttempts = 0;
+  const loginBtn = document.querySelector("button");
+  const emailInput = document.querySelectorAll("input")[0];
+  const passwordInput = document.querySelectorAll("input")[1];
 
-window.login = async function() {
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-  const errorEl = document.getElementById("error");
+  loginBtn.addEventListener("click", () => {
+    const email = emailInput.value;
+    const password = passwordInput.value;
 
-  try {
-    await signInWithEmailAndPassword(auth, email, password);
-    loginAttempts = 0;
-  } catch (error) {
-    loginAttempts++;
-    if (loginAttempts >= 3) {
-      errorEl.innerText = "Password salah 3 kali. Hubungi Admin (085175333015)";
-    } else {
-      errorEl.innerText = "Login gagal.";
-    }
-  }
-};
-
-window.logout = function() {
-  signOut(auth);
-};
-
-onAuthStateChanged(auth, user => {
-  if (user) {
-    document.getElementById("loginPage").classList.add("hidden");
-    document.getElementById("dashboard").classList.remove("hidden");
-  } else {
-    document.getElementById("loginPage").classList.remove("hidden");
-    document.getElementById("dashboard").classList.add("hidden");
-  }
-});
-
-window.saveData = async function() {
-  const sales = document.getElementById("sales").value;
-  const struk = document.getElementById("struk").value;
-  const today = new Date().toISOString().split("T")[0];
-
-  await setDoc(doc(db, "sales", today), {
-    sales: Number(sales),
-    struk: Number(struk)
+    signInWithEmailAndPassword(auth, email, password)
+      .then((userCredential) => {
+        alert("Login berhasil!");
+        window.location.href = "dashboard.html";
+      })
+      .catch((error) => {
+        alert(error.message);
+      });
   });
-
-  document.getElementById("todayData").innerText =
-    "Sales: " + sales + " | Struk: " + struk;
-};
 </script>
-
-</body>
-</html>
