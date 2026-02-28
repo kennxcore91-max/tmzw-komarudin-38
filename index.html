@@ -8,7 +8,7 @@
 <style>
 body{
 margin:0;
-font-family:Arial;
+font-family:Arial, sans-serif;
 background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
 color:white;
 }
@@ -53,6 +53,7 @@ margin-top:15px;
 </div>
 
 <div id="dashboard" class="hidden">
+
 <h2>Dashboard</h2>
 <button onclick="logout()">Logout</button>
 
@@ -81,11 +82,12 @@ margin-top:15px;
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } 
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
 from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc } 
+import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc }
 from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+/* ===== CONFIG KAMU ===== */
 const firebaseConfig = {
   apiKey: "AIzaSyCyPdzQAsDENvsIS-lzfoRMI97r1GBYsvM",
   authDomain: "tmzw-komarudin-38.firebaseapp.com",
@@ -94,6 +96,7 @@ const firebaseConfig = {
   messagingSenderId: "247873202745",
   appId: "1:247873202745:web:b8edbf0a1117530c8f3be8"
 };
+/* ======================== */
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -156,6 +159,7 @@ alert("Target disimpan!");
 
 async function loadData(){
 const snapshot=await getDocs(collection(db,"sales"));
+
 let total=0;
 let totalStruk=0;
 let html="";
@@ -164,6 +168,7 @@ snapshot.forEach((doc)=>{
 const d=doc.data();
 total+=d.sales;
 totalStruk+=d.struk;
+
 html+=`
 <p>
 ${d.tanggal}<br>
