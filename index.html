@@ -37,198 +37,170 @@ margin-top:15px;
 }
 
 .hidden{display:none;}
-.stat{margin-bottom:8px;}
 </style>
 </head>
 <body>
 
-<div class="container" id="loginPage">
-<h2>TMZW KOMARUDIN 38</h2>
+<div class="container">
+
+<h2>Login</h2>
+
+<div id="loginBox">
 <input type="email" id="email" placeholder="Email">
 <input type="password" id="password" placeholder="Password">
-<button id="loginBtn">Login</button>
+<button onclick="login()">Login</button>
+<p id="errorLogin"></p>
 </div>
 
-<div class="container hidden" id="dashboard">
-
+<div id="dashboard" class="hidden">
 <h2>Dashboard</h2>
-<button id="logoutBtn">Logout</button>
+<button onclick="logout()">Logout</button>
 
 <div class="card">
 <h3>Input Sales Harian</h3>
 <input type="date" id="tanggal">
-<input type="number" id="sales" placeholder="Total Penjualan">
-<input type="number" id="struk" placeholder="Jumlah Struk">
-<button id="saveBtn">Simpan</button>
+<input type="number" id="sales" placeholder="Sales">
+<input type="number" id="struk" placeholder="Struk">
+<button onclick="simpanData()">Simpan</button>
 </div>
 
-<div class="card">
-<h3>Target (Admin Only)</h3>
-<div id="adminSection" class="hidden">
-<input type="number" id="targetSPD" placeholder="Target SPD Harian">
+<div class="card hidden" id="adminBox">
+<h3>Input Target Bulanan (Admin)</h3>
 <input type="number" id="targetBulanan" placeholder="Target Akumulasi Bulanan">
-<button id="saveTargetBtn">Simpan Target</button>
-</div>
-<div id="targetInfo"></div>
+<button onclick="simpanTarget()">Simpan Target</button>
 </div>
 
 <div class="card">
-<h3>Rekap Bulan Berjalan</h3>
-<div id="rekap"></div>
+<h3>Data & Perhitungan</h3>
+<div id="dataList"></div>
 </div>
 
+</div>
 </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
-import { getFirestore, collection, doc, setDoc, getDocs, getDoc } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } 
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc } 
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+/* ===== GANTI DENGAN CONFIG FIREBASE KAMU ===== */
 const firebaseConfig = {
-apiKey: "AIzaSyCyPdzQAsDENvsIS-lzfoRMI97r1GBYsvM",
-authDomain: "tmzw-komarudin-38.firebaseapp.com",
-projectId: "tmzw-komarudin-38",
-storageBucket: "tmzw-komarudin-38.firebasestorage.app",
-messagingSenderId: "247873202745",
-appId: "1:247873202745:web:b8edbf0a1117530c8f3be8"
+apiKey: "PASTE_API_KEY_DI_SINI",
+authDomain: "PASTE_AUTH_DOMAIN",
+projectId: "PASTE_PROJECT_ID",
+storageBucket: "PASTE_STORAGE_BUCKET",
+messagingSenderId: "PASTE_SENDER_ID",
+appId: "PASTE_APP_ID"
 };
-
-const ADMIN_EMAIL = "ikinasikin.co@gmail.com";
+/* ============================================== */
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-const loginPage = document.getElementById("loginPage");
-const dashboard = document.getElementById("dashboard");
-const adminSection = document.getElementById("adminSection");
+window.login = function(){
+const email=document.getElementById("email").value;
+const password=document.getElementById("password").value;
 
-document.getElementById("loginBtn").addEventListener("click", async () => {
-const emailValue = document.getElementById("email").value;
-const passValue = document.getElementById("password").value;
-
-if(!emailValue || !passValue){
-alert("Isi email & password");
-return;
-}
-
-try{
-await signInWithEmailAndPassword(auth,emailValue,passValue);
-}catch(e){
-alert("Login gagal: "+e.message);
-}
+signInWithEmailAndPassword(auth,email,password)
+.catch(err=>{
+document.getElementById("errorLogin").innerText=err.message;
 });
+}
 
-document.getElementById("logoutBtn").addEventListener("click", ()=>{
+window.logout = function(){
 signOut(auth);
-});
+}
 
-onAuthStateChanged(auth,user=>{
+onAuthStateChanged(auth,(user)=>{
 if(user){
-loginPage.classList.add("hidden");
-dashboard.classList.remove("hidden");
+document.getElementById("loginBox").classList.add("hidden");
+document.getElementById("dashboard").classList.remove("hidden");
 
-if(user.email === ADMIN_EMAIL){
-adminSection.classList.remove("hidden");
-}else{
-adminSection.classList.add("hidden");
+if(user.email==="ikinasikin.co@gmail.com"){
+document.getElementById("adminBox").classList.remove("hidden");
 }
 
-loadRekap();
-loadTarget();
+loadData();
 }else{
-loginPage.classList.remove("hidden");
-dashboard.classList.add("hidden");
+document.getElementById("loginBox").classList.remove("hidden");
+document.getElementById("dashboard").classList.add("hidden");
 }
 });
 
-document.getElementById("saveBtn").addEventListener("click", async ()=>{
-const tanggal = document.getElementById("tanggal").value;
-const sales = Number(document.getElementById("sales").value);
-const struk = Number(document.getElementById("struk").value);
+window.simpanData = async function(){
+const tanggal=document.getElementById("tanggal").value;
+const sales=Number(document.getElementById("sales").value);
+const struk=Number(document.getElementById("struk").value);
 
-if(!tanggal || !sales || !struk){
-alert("Lengkapi data dulu");
-return;
-}
-
-await setDoc(doc(db,"sales",tanggal),{
+await addDoc(collection(db,"sales"),{
 tanggal,
 sales,
 struk
 });
 
-alert("Data tersimpan");
-loadRekap();
-});
+alert("Data tersimpan!");
+loadData();
+}
 
-document.getElementById("saveTargetBtn").addEventListener("click", async ()=>{
-const targetSPD = Number(document.getElementById("targetSPD").value);
-const targetBulanan = Number(document.getElementById("targetBulanan").value);
+window.simpanTarget = async function(){
+const target=Number(document.getElementById("targetBulanan").value);
 
 await setDoc(doc(db,"config","target"),{
-targetSPD,
-targetBulanan
+targetBulanan:target
 });
 
-alert("Target disimpan");
-loadTarget();
-});
-
-async function loadTarget(){
-const docSnap = await getDoc(doc(db,"config","target"));
-if(docSnap.exists()){
-const d = docSnap.data();
-document.getElementById("targetInfo").innerHTML =
-`Target SPD: ${d.targetSPD || 0}<br>
-Target Bulanan: ${d.targetBulanan || 0}`;
-}
+alert("Target disimpan!");
 }
 
-async function loadRekap(){
-const querySnapshot = await getDocs(collection(db,"sales"));
-let totalSales = 0;
-let totalStruk = 0;
+async function loadData(){
+const snapshot=await getDocs(collection(db,"sales"));
+let total=0;
+let totalStruk=0;
+let html="";
 
-const today = new Date();
-const currentMonth = today.getMonth();
-const currentYear = today.getFullYear();
-const todayDate = today.getDate();
-
-querySnapshot.forEach(doc=>{
-const d = doc.data();
-const dateObj = new Date(d.tanggal);
-
-if(dateObj.getMonth() === currentMonth && dateObj.getFullYear() === currentYear){
-totalSales += d.sales;
-totalStruk += d.struk;
-}
-});
-
-const spd = totalSales / todayDate;
-const apc = totalStruk > 0 ? totalSales / totalStruk : 0;
-
-const targetDoc = await getDoc(doc(db,"config","target"));
-let targetSPD = 0;
-let targetBulanan = 0;
-
-if(targetDoc.exists()){
-targetSPD = targetDoc.data().targetSPD || 0;
-targetBulanan = targetDoc.data().targetBulanan || 0;
-}
-
-const acvSPD = targetSPD > 0 ? (spd / targetSPD) * 100 : 0;
-const acvBulanan = targetBulanan > 0 ? (totalSales / targetBulanan) * 100 : 0;
-
-document.getElementById("rekap").innerHTML = `
-<div class="stat">Total Akumulasi: ${totalSales.toLocaleString()}</div>
-<div class="stat">SPD Berjalan: ${spd.toFixed(0)}</div>
-<div class="stat">APC Berjalan: ${apc.toFixed(0)}</div>
-<div class="stat">Achievement SPD: ${acvSPD.toFixed(1)}%</div>
-<div class="stat">Achievement Bulanan: ${acvBulanan.toFixed(1)}%</div>
+snapshot.forEach((doc)=>{
+const d=doc.data();
+total+=d.sales;
+totalStruk+=d.struk;
+html+=`
+<p>
+${d.tanggal}<br>
+Sales: ${d.sales}<br>
+Struk: ${d.struk}
+</p><hr>
 `;
-}
-</script>
+});
 
+let spd=0;
+if(totalStruk>0){
+spd=total/totalStruk;
+}
+
+const targetDoc=await getDoc(doc(db,"config","target"));
+let target=0;
+if(targetDoc.exists()){
+target=targetDoc.data().targetBulanan;
+}
+
+let achievement=0;
+if(target>0){
+achievement=(total/target)*100;
+}
+
+html+=`
+<h4>Total Akumulasi: ${total}</h4>
+<h4>SPD: ${Math.round(spd)}</h4>
+<h4>Target Bulanan: ${target}</h4>
+<h4>Achievement: ${achievement.toFixed(2)}%</h4>
+`;
+
+document.getElementById("dataList").innerHTML=html;
+}
+
+</script>
 </body>
 </html>
