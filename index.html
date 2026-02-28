@@ -70,36 +70,120 @@ button {
 </div>
 
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
-  import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
+import { 
+  getAuth, 
+  signInWithEmailAndPassword, 
+  onAuthStateChanged, 
+  signOut 
+} from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyCyPdzQAsDENvsIS-lzfoRMI97r1GBYsvM",,
-    authDomain: "tmzw-komarudin-38.firebaseapp.com",
-    projectId: "tmzw-komarudin-38",
-    storageBucket: "tmzw-komarudin-38.firebasestorage.app",
-    messagingSenderId: "247873202745",
-    appId: "1:247873202745:web:b8edbf0a1117530c8f3be8"
-  };
+import { 
+  getFirestore, 
+  collection, 
+  addDoc, 
+  onSnapshot, 
+  query, 
+  orderBy 
+} from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
+const firebaseConfig = {
+  apiKey: "AIzaSyCyPdzQAsDENvsIS-lzfoRMI97r1GBYsvM",
+  authDomain: "tmzw-komarudin-38.firebaseapp.com",
+  projectId: "tmzw-komarudin-38",
+  storageBucket: "tmzw-komarudin-38.firebasestorage.app",
+  messagingSenderId: "247873202745",
+  appId: "1:247873202745:web:b8edbf0a1117530c8f3be8"
+};
 
-  const loginBtn = document.querySelector("button");
-  const emailInput = document.querySelectorAll("input")[0];
-  const passwordInput = document.querySelectorAll("input")[1];
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-  loginBtn.addEventListener("click", () => {
-    const email = emailInput.value;
-    const password = passwordInput.value;
+// ELEMENT
+const loginPage = document.getElementById("loginPage");
+const dashboard = document.getElementById("dashboard");
 
-    signInWithEmailAndPassword(auth, email, password)
-      .then((userCredential) => {
-        alert("Login berhasil!");
-        window.location.href = "dashboard.html";
-      })
-      .catch((error) => {
-        alert(error.message);
-      });
+const loginBtn = document.getElementById("loginBtn");
+const logoutBtn = document.getElementById("logoutBtn");
+const saveBtn = document.getElementById("saveBtn");
+
+const emailInput = document.getElementById("email");
+const passwordInput = document.getElementById("password");
+
+const salesInput = document.getElementById("sales");
+const strukInput = document.getElementById("struk");
+const todayData = document.getElementById("todayData");
+
+// LOGIN
+loginBtn.addEventListener("click", async () => {
+  const email = emailInput.value;
+  const password = passwordInput.value;
+
+  if (!email || !password) {
+    alert("Isi email dan password");
+    return;
+  }
+
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch (error) {
+    alert("Login gagal: " + error.message);
+  }
+});
+
+// CEK LOGIN
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    loginPage.classList.add("hidden");
+    dashboard.classList.remove("hidden");
+  } else {
+    loginPage.classList.remove("hidden");
+    dashboard.classList.add("hidden");
+  }
+});
+
+// LOGOUT
+logoutBtn.addEventListener("click", async () => {
+  await signOut(auth);
+});
+
+// SIMPAN DATA
+saveBtn.addEventListener("click", async () => {
+  const sales = salesInput.value;
+  const struk = strukInput.value;
+
+  if (!sales || !struk) {
+    alert("Isi semua data dulu");
+    return;
+  }
+
+  await addDoc(collection(db, "sales"), {
+    sales: Number(sales),
+    struk: Number(struk),
+    createdAt: new Date()
   });
+
+  salesInput.value = "";
+  strukInput.value = "";
+});
+
+// REALTIME
+const q = query(collection(db, "sales"), orderBy("createdAt", "desc"));
+
+onSnapshot(q, (snapshot) => {
+  if (snapshot.empty) {
+    todayData.innerHTML = "Belum ada data";
+    return;
+  }
+
+  let html = "";
+  snapshot.forEach(doc => {
+    const data = doc.data();
+    html += `<p>Sales: Rp ${data.sales.toLocaleString()} | Struk: ${data.struk}</p>`;
+  });
+
+  todayData.innerHTML = html;
+});
+
 </script>
