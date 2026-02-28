@@ -7,84 +7,83 @@
 
 <style>
 body{
-margin:0;
-font-family:Arial;
-background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
-color:white;
+  margin:0;
+  font-family:Arial;
+  background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+  color:white;
 }
 
-.container{padding:20px;}
+.container{
+  padding:20px;
+  max-width:400px;
+  margin:auto;
+}
 
 input,button{
-width:100%;
-padding:12px;
-margin:8px 0;
-border-radius:8px;
-border:none;
+  width:100%;
+  padding:12px;
+  margin-top:10px;
+  border-radius:8px;
+  border:none;
 }
 
 button{
-background:#00c6ff;
-font-weight:bold;
-cursor:pointer;
+  background:#00c6ff;
+  font-weight:bold;
+  cursor:pointer;
 }
 
 .card{
-background:#1e293b;
-padding:15px;
-border-radius:12px;
-margin-top:15px;
+  background:#1e293b;
+  padding:15px;
+  border-radius:12px;
+  margin-top:15px;
 }
 
-.hidden{display:none;}
+.hidden{
+  display:none;
+}
 </style>
 </head>
+
 <body>
 
 <div class="container">
 
-<h2>Login</h2>
+  <!-- LOGIN -->
+  <div id="loginPage">
+    <h2>TMZW KOMARUDIN 38</h2>
+    <input id="email" type="email" placeholder="Email">
+    <input id="password" type="password" placeholder="Password">
+    <button type="button" onclick="login()">Login</button>
+  </div>
 
-<div id="loginBox">
-<input type="email" id="email" placeholder="Email">
-<input type="password" id="password" placeholder="Password">
-<button onclick="login()">Login</button>
-<p id="errorLogin"></p>
-</div>
+  <!-- DASHBOARD -->
+  <div id="dashboard" class="hidden">
+    <h2>Dashboard</h2>
+    <button onclick="logout()">Logout</button>
 
-<div id="dashboard" class="hidden">
-<h2>Dashboard</h2>
-<button onclick="logout()">Logout</button>
+    <div class="card">
+      <h3>Input Sales Harian</h3>
+      <input id="tanggal" type="date">
+      <input id="sales" type="number" placeholder="Sales">
+      <input id="struk" type="number" placeholder="Jumlah Struk">
+      <button onclick="simpanData()">Simpan</button>
+    </div>
 
-<div class="card">
-<h3>Input Sales Harian</h3>
-<input type="date" id="tanggal">
-<input type="number" id="sales" placeholder="Sales">
-<input type="number" id="struk" placeholder="Struk">
-<button onclick="simpanData()">Simpan</button>
-</div>
+    <div class="card">
+      <h3>Data Tersimpan</h3>
+      <div id="dataList"></div>
+    </div>
+  </div>
 
-<div class="card hidden" id="adminBox">
-<h3>Input Target Bulanan (Admin)</h3>
-<input type="number" id="targetBulanan" placeholder="Target Akumulasi Bulanan">
-<button onclick="simpanTarget()">Simpan Target</button>
-</div>
-
-<div class="card">
-<h3>Data & Perhitungan</h3>
-<div id="dataList"></div>
-</div>
-
-</div>
 </div>
 
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } 
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc } 
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCyPdzQAsDENvsIS-lzfoRMI97r1GBYsvM",
@@ -99,106 +98,70 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-window.login = function(){
-const email=document.getElementById("email").value;
-const password=document.getElementById("password").value;
+window.login = async function(){
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
 
-signInWithEmailAndPassword(auth,email,password)
-.catch(err=>{
-document.getElementById("errorLogin").innerText=err.message;
-});
+  try{
+    await signInWithEmailAndPassword(auth,email,password);
+    alert("Login berhasil");
+    document.getElementById("loginPage").classList.add("hidden");
+    document.getElementById("dashboard").classList.remove("hidden");
+    loadData();
+  }catch(error){
+    alert(error.message);
+  }
 }
 
-window.logout = function(){
-signOut(auth);
+window.logout = async function(){
+  await signOut(auth);
+  location.reload();
 }
-
-onAuthStateChanged(auth,(user)=>{
-if(user){
-document.getElementById("loginBox").classList.add("hidden");
-document.getElementById("dashboard").classList.remove("hidden");
-
-if(user.email==="ikinasikin.co@gmail.com"){
-document.getElementById("adminBox").classList.remove("hidden");
-}
-
-loadData();
-}else{
-document.getElementById("loginBox").classList.remove("hidden");
-document.getElementById("dashboard").classList.add("hidden");
-}
-});
 
 window.simpanData = async function(){
-const tanggal=document.getElementById("tanggal").value;
-const sales=Number(document.getElementById("sales").value);
-const struk=Number(document.getElementById("struk").value);
+  const tanggal = document.getElementById("tanggal").value;
+  const sales = parseInt(document.getElementById("sales").value);
+  const struk = parseInt(document.getElementById("struk").value);
 
-await addDoc(collection(db,"sales"),{
-tanggal,
-sales,
-struk
-});
+  if(!tanggal || !sales || !struk){
+    alert("Isi semua data");
+    return;
+  }
 
-alert("Data tersimpan!");
-loadData();
-}
+  const apc = sales/struk;
 
-window.simpanTarget = async function(){
-const target=Number(document.getElementById("targetBulanan").value);
+  await addDoc(collection(db,"sales"),{
+    tanggal,
+    sales,
+    struk,
+    apc
+  });
 
-await setDoc(doc(db,"config","target"),{
-targetBulanan:target
-});
-
-alert("Target disimpan!");
+  alert("Data tersimpan");
+  loadData();
 }
 
 async function loadData(){
-const snapshot=await getDocs(collection(db,"sales"));
-let total=0;
-let totalStruk=0;
-let html="";
+  const querySnapshot = await getDocs(collection(db,"sales"));
+  let html = "";
 
-snapshot.forEach((doc)=>{
-const d=doc.data();
-total+=d.sales;
-totalStruk+=d.struk;
-html+=`
-<p>
-${d.tanggal}<br>
-Sales: ${d.sales}<br>
-Struk: ${d.struk}
-</p><hr>
-`;
-});
+  querySnapshot.forEach((doc)=>{
+    const d = doc.data();
+    html += `
+      <p>
+      ${d.tanggal}<br>
+      Sales: ${d.sales}<br>
+      Struk: ${d.struk}<br>
+      APC: ${Math.round(d.apc)}
+      </p>
+      <hr>
+    `;
+  });
 
-let spd=0;
-if(totalStruk>0){
-spd=total/totalStruk;
-}
-
-const targetDoc=await getDoc(doc(db,"config","target"));
-let target=0;
-if(targetDoc.exists()){
-target=targetDoc.data().targetBulanan;
-}
-
-let achievement=0;
-if(target>0){
-achievement=(total/target)*100;
-}
-
-html+=`
-<h4>Total Akumulasi: ${total}</h4>
-<h4>SPD: ${Math.round(spd)}</h4>
-<h4>Target Bulanan: ${target}</h4>
-<h4>Achievement: ${achievement.toFixed(2)}%</h4>
-`;
-
-document.getElementById("dataList").innerHTML=html;
+  document.getElementById("dataList").innerHTML = html;
 }
 
 </script>
+
 </body>
 </html>
