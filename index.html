@@ -6,184 +6,229 @@
 <title>TMZW KOMARUDIN 38</title>
 
 <style>
-body {
-  margin:0;
-  font-family: Arial, sans-serif;
-  background: linear-gradient(135deg,#0f2027,#203a43,#2c5364);
-  color:white;
+body{
+margin:0;
+font-family:Arial;
+background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+color:white;
 }
-.container {
-  padding:20px;
+
+.container{padding:20px;}
+
+input,button{
+width:100%;
+padding:12px;
+margin:8px 0;
+border-radius:8px;
+border:none;
 }
-input {
-  width:100%;
-  padding:10px;
-  margin:8px 0;
-  border-radius:8px;
-  border:none;
+
+button{
+background:#00c6ff;
+font-weight:bold;
+cursor:pointer;
 }
-button {
-  padding:10px;
-  border:none;
-  border-radius:8px;
-  background:#00c6ff;
-  color:black;
-  font-weight:bold;
-  width:100%;
+
+.card{
+background:#1e293b;
+padding:15px;
+border-radius:12px;
+margin-top:15px;
 }
-.card {
-  background:#1e2a38;
-  padding:15px;
-  border-radius:12px;
-  margin-top:15px;
-}
-.hidden { display:none; }
+
+.hidden{display:none;}
+.stat{margin-bottom:8px;}
 </style>
 </head>
-
 <body>
 
 <div class="container" id="loginPage">
-  <h2>TMZW KOMARUDIN 38</h2>
-  <input type="email" id="email" placeholder="Email">
-  <input type="password" id="password" placeholder="Password">
-  <button onclick="login()">Login</button>
-  <p onclick="alert('Silakan hubungi CIF TMZW untuk mendapatkan password login.')" style="cursor:pointer;color:#00c6ff;">Lupa Kata Sandi?</p>
-  <p id="error" style="color:red;"></p>
+<h2>TMZW KOMARUDIN 38</h2>
+<input type="email" id="email" placeholder="Email">
+<input type="password" id="password" placeholder="Password">
+<button id="loginBtn">Login</button>
 </div>
 
 <div class="container hidden" id="dashboard">
-  <h2>Dashboard</h2>
-  <button onclick="logout()">Logout</button>
 
-  <div class="card">
-    <h3>Input Sales Harian</h3>
-    <input type="number" id="sales" placeholder="Sales Harian">
-    <input type="number" id="struk" placeholder="Struk Harian">
-    <button onclick="saveData()">Simpan</button>
-  </div>
+<h2>Dashboard</h2>
+<button id="logoutBtn">Logout</button>
 
-  <div class="card">
-    <h3>Data Hari Ini</h3>
-    <p id="todayData"></p>
-  </div>
+<div class="card">
+<h3>Input Sales Harian</h3>
+<input type="date" id="tanggal">
+<input type="number" id="sales" placeholder="Total Penjualan">
+<input type="number" id="struk" placeholder="Jumlah Struk">
+<button id="saveBtn">Simpan</button>
+</div>
+
+<div class="card">
+<h3>Target (Admin Only)</h3>
+<div id="adminSection" class="hidden">
+<input type="number" id="targetSPD" placeholder="Target SPD Harian">
+<input type="number" id="targetBulanan" placeholder="Target Akumulasi Bulanan">
+<button id="saveTargetBtn">Simpan Target</button>
+</div>
+<div id="targetInfo"></div>
+</div>
+
+<div class="card">
+<h3>Rekap Bulan Berjalan</h3>
+<div id="rekap"></div>
+</div>
+
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
-import { 
-  getAuth, 
-  signInWithEmailAndPassword, 
-  onAuthStateChanged, 
-  signOut 
-} from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
-
-import { 
-  getFirestore, 
-  collection, 
-  addDoc, 
-  onSnapshot, 
-  query, 
-  orderBy 
-} from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
+import { getFirestore, collection, doc, setDoc, getDocs, getDoc } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCyPdzQAsDENvsIS-lzfoRMI97r1GBYsvM",
-  authDomain: "tmzw-komarudin-38.firebaseapp.com",
-  projectId: "tmzw-komarudin-38",
-  storageBucket: "tmzw-komarudin-38.firebasestorage.app",
-  messagingSenderId: "247873202745",
-  appId: "1:247873202745:web:b8edbf0a1117530c8f3be8"
+apiKey: "AIzaSyCyPdzQAsDENvsIS-lzfoRMI97r1GBYsvM",
+authDomain: "tmzw-komarudin-38.firebaseapp.com",
+projectId: "tmzw-komarudin-38",
+storageBucket: "tmzw-komarudin-38.firebasestorage.app",
+messagingSenderId: "247873202745",
+appId: "1:247873202745:web:b8edbf0a1117530c8f3be8"
 };
+
+const ADMIN_EMAIL = "ikinasikin.co@gmail.com";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// ELEMENT
 const loginPage = document.getElementById("loginPage");
 const dashboard = document.getElementById("dashboard");
+const adminSection = document.getElementById("adminSection");
 
-const loginBtn = document.getElementById("loginBtn");
-const logoutBtn = document.getElementById("logoutBtn");
-const saveBtn = document.getElementById("saveBtn");
+document.getElementById("loginBtn").addEventListener("click", async () => {
+const emailValue = document.getElementById("email").value;
+const passValue = document.getElementById("password").value;
 
-const emailInput = document.getElementById("email");
-const passwordInput = document.getElementById("password");
+if(!emailValue || !passValue){
+alert("Isi email & password");
+return;
+}
 
-const salesInput = document.getElementById("sales");
-const strukInput = document.getElementById("struk");
-const todayData = document.getElementById("todayData");
-
-// LOGIN
-loginBtn.addEventListener("click", async () => {
-  const email = emailInput.value;
-  const password = passwordInput.value;
-
-  if (!email || !password) {
-    alert("Isi email dan password");
-    return;
-  }
-
-  try {
-    await signInWithEmailAndPassword(auth, email, password);
-  } catch (error) {
-    alert("Login gagal: " + error.message);
-  }
+try{
+await signInWithEmailAndPassword(auth,emailValue,passValue);
+}catch(e){
+alert("Login gagal: "+e.message);
+}
 });
 
-// CEK LOGIN
-onAuthStateChanged(auth, (user) => {
-  if (user) {
-    loginPage.classList.add("hidden");
-    dashboard.classList.remove("hidden");
-  } else {
-    loginPage.classList.remove("hidden");
-    dashboard.classList.add("hidden");
-  }
+document.getElementById("logoutBtn").addEventListener("click", ()=>{
+signOut(auth);
 });
 
-// LOGOUT
-logoutBtn.addEventListener("click", async () => {
-  await signOut(auth);
+onAuthStateChanged(auth,user=>{
+if(user){
+loginPage.classList.add("hidden");
+dashboard.classList.remove("hidden");
+
+if(user.email === ADMIN_EMAIL){
+adminSection.classList.remove("hidden");
+}else{
+adminSection.classList.add("hidden");
+}
+
+loadRekap();
+loadTarget();
+}else{
+loginPage.classList.remove("hidden");
+dashboard.classList.add("hidden");
+}
 });
 
-// SIMPAN DATA
-saveBtn.addEventListener("click", async () => {
-  const sales = salesInput.value;
-  const struk = strukInput.value;
+document.getElementById("saveBtn").addEventListener("click", async ()=>{
+const tanggal = document.getElementById("tanggal").value;
+const sales = Number(document.getElementById("sales").value);
+const struk = Number(document.getElementById("struk").value);
 
-  if (!sales || !struk) {
-    alert("Isi semua data dulu");
-    return;
-  }
+if(!tanggal || !sales || !struk){
+alert("Lengkapi data dulu");
+return;
+}
 
-  await addDoc(collection(db, "sales"), {
-    sales: Number(sales),
-    struk: Number(struk),
-    createdAt: new Date()
-  });
-
-  salesInput.value = "";
-  strukInput.value = "";
+await setDoc(doc(db,"sales",tanggal),{
+tanggal,
+sales,
+struk
 });
 
-// REALTIME
-const q = query(collection(db, "sales"), orderBy("createdAt", "desc"));
-
-onSnapshot(q, (snapshot) => {
-  if (snapshot.empty) {
-    todayData.innerHTML = "Belum ada data";
-    return;
-  }
-
-  let html = "";
-  snapshot.forEach(doc => {
-    const data = doc.data();
-    html += `<p>Sales: Rp ${data.sales.toLocaleString()} | Struk: ${data.struk}</p>`;
-  });
-
-  todayData.innerHTML = html;
+alert("Data tersimpan");
+loadRekap();
 });
 
+document.getElementById("saveTargetBtn").addEventListener("click", async ()=>{
+const targetSPD = Number(document.getElementById("targetSPD").value);
+const targetBulanan = Number(document.getElementById("targetBulanan").value);
+
+await setDoc(doc(db,"config","target"),{
+targetSPD,
+targetBulanan
+});
+
+alert("Target disimpan");
+loadTarget();
+});
+
+async function loadTarget(){
+const docSnap = await getDoc(doc(db,"config","target"));
+if(docSnap.exists()){
+const d = docSnap.data();
+document.getElementById("targetInfo").innerHTML =
+`Target SPD: ${d.targetSPD || 0}<br>
+Target Bulanan: ${d.targetBulanan || 0}`;
+}
+}
+
+async function loadRekap(){
+const querySnapshot = await getDocs(collection(db,"sales"));
+let totalSales = 0;
+let totalStruk = 0;
+
+const today = new Date();
+const currentMonth = today.getMonth();
+const currentYear = today.getFullYear();
+const todayDate = today.getDate();
+
+querySnapshot.forEach(doc=>{
+const d = doc.data();
+const dateObj = new Date(d.tanggal);
+
+if(dateObj.getMonth() === currentMonth && dateObj.getFullYear() === currentYear){
+totalSales += d.sales;
+totalStruk += d.struk;
+}
+});
+
+const spd = totalSales / todayDate;
+const apc = totalStruk > 0 ? totalSales / totalStruk : 0;
+
+const targetDoc = await getDoc(doc(db,"config","target"));
+let targetSPD = 0;
+let targetBulanan = 0;
+
+if(targetDoc.exists()){
+targetSPD = targetDoc.data().targetSPD || 0;
+targetBulanan = targetDoc.data().targetBulanan || 0;
+}
+
+const acvSPD = targetSPD > 0 ? (spd / targetSPD) * 100 : 0;
+const acvBulanan = targetBulanan > 0 ? (totalSales / targetBulanan) * 100 : 0;
+
+document.getElementById("rekap").innerHTML = `
+<div class="stat">Total Akumulasi: ${totalSales.toLocaleString()}</div>
+<div class="stat">SPD Berjalan: ${spd.toFixed(0)}</div>
+<div class="stat">APC Berjalan: ${apc.toFixed(0)}</div>
+<div class="stat">Achievement SPD: ${acvSPD.toFixed(1)}%</div>
+<div class="stat">Achievement Bulanan: ${acvBulanan.toFixed(1)}%</div>
+`;
+}
 </script>
+
+</body>
+</html>
