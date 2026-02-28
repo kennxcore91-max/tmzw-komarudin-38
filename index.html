@@ -6,38 +6,50 @@
 <title>TMZW KOMARUDIN 38</title>
 
 <style>
-body {
+body{
   margin:0;
   font-family: Arial, sans-serif;
   background: linear-gradient(135deg,#0f2027,#203a43,#2c5364);
   color:white;
 }
-.container {
+
+.container{
   padding:20px;
 }
-input {
+
+input{
   width:100%;
-  padding:10px;
-  margin:8px 0;
+  padding:12px;
+  margin:10px 0;
   border-radius:8px;
   border:none;
 }
-button {
-  padding:10px;
+
+button{
+  width:100%;
+  padding:12px;
   border:none;
   border-radius:8px;
   background:#00c6ff;
   color:black;
   font-weight:bold;
-  width:100%;
+  cursor:pointer;
 }
-.card {
+
+button:hover{
+  background:#00a2cc;
+}
+
+.card{
   background:#1e2a38;
   padding:15px;
   border-radius:12px;
   margin-top:15px;
 }
-.hidden { display:none; }
+
+.hidden{
+  display:none;
+}
 </style>
 </head>
 
@@ -47,59 +59,87 @@ button {
   <h2>TMZW KOMARUDIN 38</h2>
   <input type="email" id="email" placeholder="Email">
   <input type="password" id="password" placeholder="Password">
-  <button onclick="login()">Login</button>
-  <p onclick="alert('Silakan hubungi CIF TMZW untuk mendapatkan password login.')" style="cursor:pointer;color:#00c6ff;">Lupa Kata Sandi?</p>
-  <p id="error" style="color:red;"></p>
+  <button id="loginBtn">Login</button>
 </div>
 
 <div class="container hidden" id="dashboard">
   <h2>Dashboard</h2>
-  <button onclick="logout()">Logout</button>
+  <button id="logoutBtn">Logout</button>
 
   <div class="card">
     <h3>Input Sales Harian</h3>
-    <input type="number" id="sales" placeholder="Sales Harian">
-    <input type="number" id="struk" placeholder="Struk Harian">
-    <button onclick="saveData()">Simpan</button>
+    <input type="number" id="sales" placeholder="Sales Hari Ini">
+    <input type="number" id="struk" placeholder="Jumlah Struk">
+    <button id="saveBtn">Simpan</button>
   </div>
 
   <div class="card">
     <h3>Data Hari Ini</h3>
-    <p id="todayData"></p>
+    <p id="todayData">Belum ada data</p>
   </div>
 </div>
 
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
-  import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut } 
+from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc } 
+from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyCyPdzQAsDENvsIS-lzfoRMI97r1GBYsvM",,
-    authDomain: "tmzw-komarudin-38.firebaseapp.com",
-    projectId: "tmzw-komarudin-38",
-    storageBucket: "tmzw-komarudin-38.firebasestorage.app",
-    messagingSenderId: "247873202745",
-    appId: "1:247873202745:web:b8edbf0a1117530c8f3be8"
-  };
+const firebaseConfig = {
+  apiKey: "AIzaSyCyPdzQAsDENvsIS-lzfoRMI97r1GBYsvM",
+  authDomain: "tmzw-komarudin-38.firebaseapp.com",
+  projectId: "tmzw-komarudin-38",
+  storageBucket: "tmzw-komarudin-38.firebasestorage.app",
+  messagingSenderId: "247873202745",
+  appId: "1:247873202745:web:b8edbf0a1117530c8f3be8"
+};
 
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-  const loginBtn = document.querySelector("button");
-  const emailInput = document.querySelectorAll("input")[0];
-  const passwordInput = document.querySelectorAll("input")[1];
+const loginBtn = document.getElementById("loginBtn");
+const logoutBtn = document.getElementById("logoutBtn");
+const saveBtn = document.getElementById("saveBtn");
 
-  loginBtn.addEventListener("click", () => {
-    const email = emailInput.value;
-    const password = passwordInput.value;
+loginBtn.addEventListener("click", () => {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
 
-    signInWithEmailAndPassword(auth, email, password)
-      .then((userCredential) => {
-        alert("Login berhasil!");
-        window.location.href = "dashboard.html";
-      })
-      .catch((error) => {
-        alert(error.message);
-      });
+  signInWithEmailAndPassword(auth, email, password)
+    .then(() => {
+      document.getElementById("loginPage").classList.add("hidden");
+      document.getElementById("dashboard").classList.remove("hidden");
+    })
+    .catch((error) => {
+      alert("Login gagal: " + error.message);
+    });
+});
+
+logoutBtn.addEventListener("click", () => {
+  signOut(auth).then(() => {
+    document.getElementById("dashboard").classList.add("hidden");
+    document.getElementById("loginPage").classList.remove("hidden");
   });
+});
+
+saveBtn.addEventListener("click", async () => {
+  const sales = document.getElementById("sales").value;
+  const struk = document.getElementById("struk").value;
+  const today = new Date().toISOString().split("T")[0];
+
+  await setDoc(doc(db, "sales", today), {
+    sales: Number(sales),
+    struk: Number(struk)
+  });
+
+  document.getElementById("todayData").innerText =
+    "Sales: Rp " + sales + " | Struk: " + struk;
+
+  alert("Data tersimpan!");
+});
 </script>
+
+</body>
+</html>
